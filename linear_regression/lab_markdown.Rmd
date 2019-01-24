@@ -1,0 +1,90 @@
+---
+title: 'Lab 2: Linear Regression'
+author: "Lizzy Presland"
+date: "January 23, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Exploring and preparing the data
+
+The data is taken from the .csv file posted on the class Canvas page.
+
+#### Q1: Load the data
+
+To load the data, we would normally use: 
+
+```
+ins_data <- read.csv("insurance.csv", header=TRUE)
+```
+
+As far as I can tell, we can load data with `stringsAsFactors=TRUE` in order for R to correctly parse the file and load a simple dataframe. However, we will want to use `stringsAsFactor=FALSE` in order to perform ***linear regression analysis*** on the data.
+
+Therefore, our load function becomes:
+
+```{r include=TRUE}
+ins_data <- read.csv("insurance.csv", header=TRUE, stringsAsFactors = TRUE)
+```
+
+#### Q2: Data structure
+
+```{r}
+summary(ins_data)
+```
+
+#### Q3: Independent and dependent variables
+
+The dependent feature is the **charges** column (the amount of money the insurance company can expect to pay for healthcare costs); the independent features are all others (**age**, **sex**, **bmi**, **number of children**, **tobacco use**, and **geographic region**).
+
+#### Q4: Dependent feature analysis
+
+It is best to analyze the dependent feature numerically; I shall use graphical and numerical methods.
+
+#### Q5: Determine data's normal distribution
+
+#### Histogram
+
+```{r}
+hist(ins_data$charges)
+```
+
+As the histogram shows, the data does not appear to be normally distributed; there appears to be a strong right skew to the data.
+
+#### Numerical Methods
+
+```{r include=FALSE}
+cat("Mean: ")
+mean(ins_data$charges)
+cat("\nMedian: ")
+median(ins_data$charges)
+```
+
+## Exploring relationships among features using a correlation matrix
+
+```{r}
+cor(ins_data$age, ins_data$charges)
+cor(ins_data$bmi, ins_data$charges)
+cor(ins_data$children, ins_data$charges)
+```
+
+**NOTE:** I was not able to get all 4 numerical values to generate a correlation matrix with the provided syntax. It would be helpful to review this in class.
+
+## Visualizing relationships using a scatterplot matrix
+
+
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
