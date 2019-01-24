@@ -33,6 +33,7 @@ ins_data <- read.csv("insurance.csv", header=TRUE, stringsAsFactors = TRUE)
 #### Q2: Data structure
 
 ```{r}
+head(ins_data)
 summary(ins_data)
 ```
 
@@ -65,26 +66,53 @@ median(ins_data$charges)
 
 ## Exploring relationships among features using a correlation matrix
 
+#### Q7: create the correlation matrix
+
 ```{r}
-cor(ins_data$age, ins_data$charges)
-cor(ins_data$bmi, ins_data$charges)
-cor(ins_data$children, ins_data$charges)
+numerics <- ins_data[,c(1, 3, 4, 7)]
+head(numerics)
+cor(numerics, numerics)
 ```
 
-**NOTE:** I was not able to get all 4 numerical values to generate a correlation matrix with the provided syntax. It would be helpful to review this in class.
+**NOTE:** It was tricky getting all 4 numerical values into a matrix as described, and took some intuition to figure out what was desired. It would be helpful to review this in class.
+
+#### Q8: reflect on patterns in matrix
+
+The two categories with the closest relationship are **age** and **charges**, which isn't surprising given that conventional wisdom dictates that healthcare costs increase with age.
+
+The next most significant correlation is between **BMI** (body mass index) and **charges**, which is unsurprising for similar reasons; according to conventional wisdom, overweight people are more likely to have health problems and/or spend more money on healthcare.
 
 ## Visualizing relationships using a scatterplot matrix
 
+#### Q9: the scatterplot matrix
 
-
-
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+pairs(numerics)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+#### Q10: Interesting observations in scatterplots
+
+I found the scatterplot of the BMI and charges to be particularly interesting.
+
+```{r}
+plot(numerics$bmi, numerics$charges)
+```
+
+There are clustering patterns of high and low charges for the same BMI range (approx 30-40 BMI). The visual disparity of these two clusters indicate that there is a pattern of healthcare spending for these individuals, and because the data is not evenly distributed through the cost spectrum in this range of BMI values, there may be an underlying pattern or set of circumstances dictating this behavior.
+
+#### Q11: enhanced scatterplot matrix
+
+```{r}
+library("psych")
+pairs.panels(numerics)
+```
+
+#### Q12: new observations with enhanced scatterplot
+
+* There appears to be a strong correlation between age and charges per the loess curve.
+* BMI appears to be normally distributed
+* Age is approximately evenly distrubted
+* Nmber of children & total charges are heavily right-skewed
+* The average number of children is quite low (around 1) for the sampled population.
+* For all other variables besides charges, the mean charges is quite low on the linear scale of dollar amounts (per the axis ranges).
+* Lastly, this is a super informative plot! Very cool.
