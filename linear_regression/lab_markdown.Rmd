@@ -107,7 +107,7 @@ library("psych")
 pairs.panels(numerics)
 ```
 
-#### Q12: new observations with enhanced scatterplot
+#### Q11 Continued: new observations with enhanced scatterplot
 
 * There appears to be a strong correlation between age and charges per the loess curve.
 * BMI appears to be normally distributed
@@ -116,3 +116,87 @@ pairs.panels(numerics)
 * The average number of children is quite low (around 1) for the sampled population.
 * For all other variables besides charges, the mean charges is quite low on the linear scale of dollar amounts (per the axis ranges).
 * Lastly, this is a super informative plot! Very cool.
+
+## Training a model on the data
+
+#### Q12: Generate a model in R
+
+```{r}
+ins_model <- lm(charges ~ age + sex + smoker + bmi + children + region, data=ins_data)
+```
+
+#### Q13: Show estimated beta coefficients
+
+```{r}
+ins_model
+```
+
+* There are 8 coefficients listed instead of 6 because each nominal category in the "Region" data column is listed as a separate feature/variable.
+* The beta value for each feature is the linear rate of change of `y` for each unit of change in the indepenent variable `x_i`. For example, each point increase in `BMI` causes the dependent variable `charges` to increase approximately $339.2.
+
+#### Q14: What increase or decrease will affect the medical expenses for each additional child? Or each additional year of age? Or unit increase of BMI?
+
+Based on the coefficient values:
+* Each additional child will cause charges to increase approximately $475.00 
+* Each additional year of age will cause charges to increase approximately $257.00
+* Each additional point increase in the example's BMI will cause charges to increase approximately $340.00
+
+#### Q15: Explain the effect of medical expenses in numbers on each one of the 3 factor features.
+
+* For the `sex` (gender) feature, the average cost will decrease when the example is male (relative to a female example).
+* For the `smoker` feature, the average cost will increase dramatically (about $23,000 dollars).
+* For the `region` feature, the enumerated values (`regionnorthwest`, `regionsoutheast`, and `regionsouthwest`) each result in a decrease in cost relative to the baseline category (deduced to be `regionnortheast`).
+
+## Evaluating model performance
+
+#### Q16: Evaluate model using `summary()`
+
+```{r}
+summary(ins_model)
+```
+
+#### Q17: Reflect on the model's accuracy in context of important performance indicators
+
+| Performance Indicator | Result |
+|-----------------------|--------|
+| P-Value | The p-values for `bmi`, `smokeryes`, and `age` are all extremely small, which suggests that these factors likely have a strong relationship with the dependent variable. Additionally, the `intercept` p-value is very small, indicating that the model is likely performing well. |
+| Residuals | The range of the residuals is very large (about \$40,000), but the range of the 2nd & 3rd quartiles is much more reasonable (approx \$4,000). This relatively small cumulative residual amount for the majority of examples, along with a median residual of less than \$1,000, indicates the model is not wildly inaccurate (if you consider the middle half of the margins of error to be within an acceptable range of error). |
+| R-squared Value | The r-squared value is approximately 0.75 for the model; in most cases, an r-squared value of 0.5 or greater indicates that the model is predicting the dependent variable's value with good or acceptable accuracy. This also suggests that our model is performing well. |
+
+## Improving the Model
+
+First, the `age` feature will be described as a non-linear (polynomial/quadratic) relationship with the dependent variable instead of a linear relationship.
+
+```{r}
+ins_data$age2 <- ins_data$age^2
+```
+
+Next, the BMI numeric value will be converted to a binary indicator.
+
+```{r}
+ins_data$bmi30 <- ifelse(ins_data$bmi >= 30, 1, 0)
+```
+
+#### Q18: Train the Improved Model
+
+Finally, we include an interaction between high BMI and smoking in our new model.
+
+```{r}
+ins_model_v2 <- lm(charges ~ age2 + sex + smoker + bmi30 + bmi30*smoker + children + region, data=ins_data)
+```
+
+```{r}
+ins_model_changes_only <- lm(charges ~ bmi30*smoker, data = ins_data)
+```
+
+```{r}
+summary(ins_model_v2)
+summary(ins_model_changes_only)
+```
+
+Reflections:
+
+* The improved model (that included the non-linear age relationship and the interaction between BMI and smoking usage) significantly outperformed the original model, with an R-squared value of ~0.86.
+* I wanted to test the training of a model using only the described changes, ans was somewhat surprised that there was almost no gain in performance when limiting the feature set in the model.
+* In the high-performing improved model, the intercept's p-value decreased slightly and the inter-quartile range (1Q-3Q) residual decreased substantially (to about $600 instead of $4000).
+* In the improved model, the significant p-value of BMI disappeared, but the interaction feature between BMI and smoker became a significant p-value in its place.
