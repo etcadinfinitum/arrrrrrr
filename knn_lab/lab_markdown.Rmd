@@ -1,0 +1,95 @@
+---
+title: 'Lab 3: KNN'
+author: "Lizzy Presland"
+date: "January 30, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exploring and Preparing the Data
+
+```{r}
+bc_data = read.csv("wisc_bc_data.csv", header=TRUE)
+```
+
+Here's some interesting summarizations of the data:
+
+```{r}
+head(bc_data)
+summary(bc_data)
+```
+
+We will exclude the patient identifier (in the first column of the dataframe); this is done for two reasons:
+
+* The ID is not a feature of interest for our k-NN model.
+* More importantly, it is very important to remove personal identifiers from sensitive datasets like this, so that the subject's privacy may be respected.
+
+```{r}
+bc_data[1] <- NULL
+```
+
+The target variable is **Diagnosis Type**, now listed in column 1. There are two levels: Benign (**B**), and Malignant (**M**).
+
+This column of data needs to be factorized, and we will rename the shorthand **B** and **M** labels to something more informative.
+
+```{r}
+bc_data$diagnosis <- as.factor(bc_data$diagnosis)
+levels(bc_data$diagnosis)[levels(bc_data$diagnosis)=="B"] <- "benign"
+levels(bc_data$diagnosis)[levels(bc_data$diagnosis)=="M"] <- "malignant"
+summary(bc_data$diagnosis)
+```
+
+Now, the percentage occurance of malignant and benign diagnoses can be calculated.
+
+```{r}
+library(plyr)
+summarize( bc_data, "Frequency"=count(bc_data$diagnosis), "Percentage"=100*count(bc_data$diagnosis)/nrow(bc_data))
+```
+
+Summary of these 3 features:
+
+```{r}
+summary(bc_data$radius_mean)
+summary(bc_data$area_mean)
+summary(bc_data$smoothness_mean)
+```
+
+## Transformation and Normalization
+
+The normalize() function is defined as follows:
+
+```{r}
+normalize <- function(x){
+  min <- min(x)
+  range <- max(x) - min
+  for (idx in 1:length(x)) {
+    x[idx] <- (x[idx] - min) / range
+  }
+  return(x)
+}
+```
+
+To test, we will create a simple vector:
+
+```{r}
+vals <- c(1, 2, 3, 4, 5)
+vals <- normalize(vals)
+vals
+```
+
+Now that the function has been tested, normalize() will be applied to each numerical feature in the dataset. Because the first column of the dataset is a list of factors, the first column will be excluded.
+
+```{r}
+wbcd_norm <- as.data.frame(lapply(bc_data[-1], normalize))
+```
+
+Now, our data looks like this:
+
+```{r}
+head(wbcd_norm)
+```
+
+## Create the Datasets for Training
