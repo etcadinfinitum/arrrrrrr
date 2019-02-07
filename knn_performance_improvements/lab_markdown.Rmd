@@ -147,9 +147,11 @@ prediction_table <- data.frame(wbcd_test_pred, wbcd_test_labels)
 prediction_table
 ```
 
-There are a few ways to evaluate the performance of the model; we primarily want to compare the test data's true labels (contained in `wbcd_test_labels`) with the `knn()` call output (contained in `wbcd_test_pred`).
+There are a few ways to evaluate the performance of the model; we primarily want to compare the test data's true labels (contained in `wbcd_test_labels`) with the `knn()` call output (contained in `wbcd_test_pred`). It is also beneficial to look at the model's overall accuracy; we shall do this second (after false positives and false negatives have been found).
 
-First, we examine the relationship between the two vectors using Pearson's Chi-squared test.
+#### Evaluating Accuracy using Chi-squared test of Prediction & Actual Vectors
+
+Next, we examine the relationship between the two vectors using Pearson's Chi-squared test.
 
 The premise of a Chi-squared test is the null hypothesis: there is no relationship between the two variables. In this example, the null and alternative hypotheses can be stated as:
 
@@ -165,24 +167,35 @@ chisq_result
 
 Based on the Chi-squared test, this model is very accurate because the p-value is so small (less than `2.2e-16`).
 
+#### Inspecting Type I and Type II Errors
+
 Let us now examine the individual items whose predicted results were different from the actual value. We will examine two different possibilities:
 
-* False positives (where prediction resulted in `malignant` label but the actual value was `benign`)
-* False negatives (where actual value was `malignant` but the prediction was `benign`)
+* False positives (where prediction resulted in `malignant` label but the actual value was `benign`); this is a **Type I** error
+* False negatives (where actual value was `malignant` but the prediction was `benign`); this is a **Type II** error
 
 The code snippet below generates the dataframes for false positives and false negatives.
 
 ```{r}
 false_positives <- data.frame(Index=integer(), Predicted=factor(), Actual=factor())
 false_negatives <- data.frame(Index=integer(), Predicted=factor(), Actual=factor())
+true_positives <- data.frame(Index=integer(), Predicted=factor(), Actual=factor())
+true_negatives <- data.frame(Index=integer(), Predicted=factor(), Actual=factor())
 for (idx in 1:100) {
   if (wbcd_test_pred[idx] == "malignant" && wbcd_test_labels[idx] == "benign") {
     new_row <- data.frame(Index=idx, Predicted=wbcd_test_pred[idx], Actual=wbcd_test_labels[idx])
     false_positives <- rbind(false_positives, new_row)
   }
-  if (wbcd_test_pred[idx] == "benign" && wbcd_test_labels[idx] == "malignant") {
+  else if (wbcd_test_pred[idx] == "benign" && wbcd_test_labels[idx] == "malignant") {
     new_row <- data.frame(Index=idx, Predicted=wbcd_test_pred[idx], Actual=wbcd_test_labels[idx])
     false_negatives <- rbind(false_negatives, new_row)
+  }
+  else if (wbcd_test_pred[idx] == "benign") {
+    new_row <- data.frame(Index=idx, Predicted=wbcd_test_pred[idx], Actual=wbcd_test_labels[idx])
+    true_negatives <- rbind(true_negatives, new_row)
+  } else {
+    new_row <- data.frame(Index=idx, Predicted=wbcd_test_pred[idx], Actual=wbcd_test_labels[idx])
+    true_positives <- rbind(true_positives, new_row)
   }
 }
 ```
@@ -198,6 +211,21 @@ With the k-value of 22 (roughly `sqrt(N=469)`), no false positives were predicte
 
 In actual usage, false negatives are far more dangerous for cancer patients, because a malignant tumor was incorrectly assumed to be benign, and the patient will not receive further diagnosis steps and treatment options for a malignant disease.
 
+#### Calculating Accuracy and Error of the Model
+
+Lastly, we will examine overall accuracy of the model.
+
+```{r}
+error_rate <- (nrow(false_negatives)+nrow(false_positives)) / (nrow(false_negatives) + nrow(false_positives) + nrow(true_negatives) + nrow(true_positives))
+accuracy <- 1 - error_rate
+error_rate
+accuracy
+```
+
+These calculations indicate that the model is 97% accurate and has a 3% error rate, which is reasonable.
+
+#### Improving the Model
+
 There may be a few ways of improving model performance; examining the model's performance with other k-values would be a useful start, and other options include:
 
 * Testing the model's performance when values aren't normalized
@@ -209,14 +237,20 @@ We will explore some of these options further in the next section.
 
 ##### Question 1: How can the model's performance be improved?
 
-There are two possible approaches to improving the model's performance that seem fruitful:
+There are several possible approaches to improving the model's performance that seem fruitful:
 
 * Using different k-values
 * Using a weighted approach for nearest neighbors that are close (when the k-value is larger)
+* Using a k-NN library that incorporates cross-validatory classification
+* Utilizing z-score data normalization instead of the standard normalization method used up until now.
+
+I will focus on the first two approaches (different k-values and weighted k-NN methods).
 
 ### Applying the Improved Methods
 
 #### Method 1: Testing alternate k-values
+
+###### Model Creation
 
 For simplicity, I will perform the following operations for k-values `[1, 160]`:
 
@@ -251,17 +285,29 @@ get_false_tables <- function(predictions) {
 Now, we use the utility function(s) to collect false positive & false negative information for each value of k.
 
 ```{r}
-false_counts <- data.frame(K=integer(), FalsePositives=integer(), FalseNegatives=integer(), PVal=double())
+false_counts <- data.frame(K=integer(), FalsePositives=integer(), FalseNegatives=integer(), PVal=double(), Error=double())
 for (k in 1:160) {
   wbcd_test_pred <- knn(wbcd_train, wbcd_test, wbcd_train_labels, k)
   results <- get_false_tables(wbcd_test_pred)
   chisq_result <- chisq.test(wbcd_test_labels, wbcd_test_pred)
-  new_row <- data.frame(K=k, FalsePositives=results[[1]], FalseNegatives=results[[2]], PVal=chisq_result$p.value)
+  new_row <- data.frame(K=k, FalsePositives=results[[1]], FalseNegatives=results[[2]], PVal=chisq_result$p.value, Error=((results[[1]] + results[[2]]) / 100))
   false_counts <- rbind(false_counts, new_row)
 }
 ```
 
-To get a visual representation of model performance, let's plot the number of false positives and false negatives for each k.
+##### Accuracy for variable-K 
+
+Let's plot the overall accuracy of each model (as a percentage figure):
+
+```{r}
+plot(false_counts$K, 100 - (false_counts$Error * 100))
+```
+
+The model starts to lose its high accuracy alues at around `k=25`, and decreases as `k` increases (an unsurprising result but still worth noting).
+
+###### Type I and Type II errors for variable-K
+
+To get a visual representation of model performance relative to Type I and Type II errors, let's plot the number of false positives and false negatives for each k.
 
 First, false positives:
 
@@ -281,5 +327,43 @@ plot(false_counts$K, false_counts$FalseNegatives)
 
 Wow! There are way too many false negatives as k increases! Based on this data, the results with a k-value in `[1, 25]` will produce the lowest number of false negatives, which is our preferred outcome.
 
+**These results indicate that smaller values for K lead to lower error rates.**
+
 # TODO: create a plot of Type I and Type II errors? How to do this??
 
+#### Method 2: Weighted k-NN Model
+
+The library I will be using to explore weighted k-nearest neighbor classification is documented at https://cran.r-project.org/web/packages/kknn/kknn.pdf and requires the `kknn` package in R.
+
+```{r}
+library(kknn)
+```
+
+To test the approach, I will generate the same data for the weighted algorithm as I did in the previous section (see Method 1: Testing alternate k-values). This tests the weighted k-NN approach for the same range of k values. **Note:** I have chosen the parameters for the `kknn()` call after some experimentation, so these results are produced after many attempts at optimizing the `kknn` usage.
+
+```{r}
+kknn_false_counts <- data.frame(K=integer(), FalsePositives=integer(), FalseNegatives=integer(), PVal=double(), Error=double())
+for (k_val in 1:160) {
+  # the fancy new k-knn training method
+  wbcd_test_pred <- kknn(wbcd_train_labels~., wbcd_train, wbcd_test, k=k_val, distance = 2, kernel="triangular")
+  results <- get_false_tables(wbcd_test_pred$fitted.values)
+  chisq_result <- chisq.test(wbcd_test_labels, wbcd_test_pred$fitted.values)
+  new_row <- data.frame(K=k_val, FalsePositives=results[[1]], FalseNegatives=results[[2]], PVal=chisq_result$p.value, Error=((results[[1]] + results[[2]]) / 100))
+  kknn_false_counts <- rbind(kknn_false_counts, new_row)
+}
+```
+
+We are looking for an improvement in the false negatives values in this model; the false negatives are plotted here:
+
+```{r}
+plot(kknn_false_counts$K, kknn_false_counts$FalseNegatives, col="red", ylim=range(c(kknn_false_counts$FalseNegatives, false_counts$FalseNegatives)), xlab="K", ylab="False Negative Count", pch=0)
+par(new=TRUE)
+plot(false_counts$K, false_counts$FalseNegatives, col="blue", axes=FALSE, xlab="", ylab="", pch=0)
+legend(0, 8.5, c("KKNN", "Original k-NN"), col=c("red", "blue"), pch=0)
+```
+
+What about the model's accuracy across all k values?
+
+```{r}
+plot(kknn_false_counts$K, 100 - (kknn_false_counts$Error * 100))
+```
