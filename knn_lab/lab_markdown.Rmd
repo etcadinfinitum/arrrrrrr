@@ -47,6 +47,10 @@ Now, the percentage occurance of malignant and benign diagnoses can be calculate
 ```{r}
 library(plyr)
 summarize( bc_data, "Frequency"=count(bc_data$diagnosis), "Percentage"=100*count(bc_data$diagnosis)/nrow(bc_data))
+# A better method for percentages:
+# round(prop.table(table(bc_data$diagnosis)) * 100, digits = 1)
+# Better Method Implemented:
+round(prop.table(table(bc_data$diagnosis)) * 100, digits = 1)
 ```
 
 Summary of these 3 features:
@@ -56,6 +60,10 @@ summary(bc_data$radius_mean)
 summary(bc_data$area_mean)
 summary(bc_data$smoothness_mean)
 ```
+
+These features could be problematic because their numerical values are so disparate; if the model looks at numeric values with size being the largest determining factor across different features, then a feature that has larger units or values could be considered more significant or relevant to the outcome than others whose data spread/values are smaller (but is a more significant indicator for classification purposes).
+
+For this reason, we want to normalize the data in a `[0, 1]` range.
 
 ## Transformation and Normalization
 
@@ -93,3 +101,106 @@ head(wbcd_norm)
 ```
 
 ## Create the Datasets for Training
+
+We will slice the data sets into two chunks for training and testing.
+
+```{r}
+wbcd_train <- wbcd_norm[1:469,]
+wbcd_test <- wbcd_norm[470:569,]
+```
+
+Next, we will store the target variable for each corresponding dataset as a vector. Because the feature we wish to train the model on is not included in the normalized dataset we created, we must extract it from the original dataframe (and be careful to slice the dataframe with the same indeces we used to create the training & test datasets).
+
+```{r}
+wbcd_train_labels <- bc_data[1:469,]$diagnosis
+wbcd_test_labels <- bc_data[470:569,]$diagnosis
+```
+
+## Training a Model on the Data
+
+We will use the k-NN implementation from R's `class` package. We import it like so:
+
+```{r}
+library(class)
+```
+
+If it is not previously installed, you may install the `class` package in R Studio by going to `Tools -> Install Packages...`, entering the package name `class` into the `Packages` prompt, and installing it to your default path.
+
+##### Finding K
+
+Without any other deciding factors influencing what K value is needed for the number of nearest neighbors evaluated, the best option is to use the square root of the training dataset size. In this case, because there are 469 units of observation included in our training dataset, I will initially use a K value of 22.
+
+##### Create the Model
+
+Here, the call to create the model is done:
+
+```{r}
+wbcd_test_pred <- knn(wbcd_train, wbcd_test, wbcd_train_labels, 22)
+```
+
+## Evaluating the Model's Performance
+
+Let's look at the vectors for the test data's target feature compared with the model's prediction.
+
+```{r}
+prediction_table <- data.frame(wbcd_test_pred, wbcd_test_labels)
+prediction_table
+```
+
+There are a few ways to evaluate the performance of the model; we primarily want to compare the test data's true labels (contained in `wbcd_test_labels`) with the `knn()` call output (contained in `wbcd_test_pred`).
+
+First, we examine the relationship between the two vectors using Pearson's Chi-squared test.
+
+The premise of a Chi-squared test is the null hypothesis: there is no relationship between the two variables. In this example, the null and alternative hypotheses can be stated as:
+
+* Null Hypothesis: There is no relationship between the model's prediction and the actual value of the target variable.
+* Alternative Hypothesis: There is a statistically significant relationship between the model's prediction and the actual value of the target variable; the model's predicted value is a good prediction of the actual value.
+
+In this test, we can only choose to reject the null hypothesis. We can make this determination from the Chi-square test's p-value; a p-value that is less than our pre-determined significance level indicates that the null hypothesis can be rejected and there is a significant correlation between the two variables. For this example, we choose a significance level of 0.05.
+
+```{r}
+chisq.test(wbcd_test_labels, wbcd_test_pred)
+```
+
+Based on the Chi-squared test, this model is very accurate because the p-value is so small (less than `2.2e-16`).
+
+Let us now examine the individual items whose predicted results were different from the actual value. We will examine two different possibilities:
+
+* False positives (where prediction resulted in `malignant` label but the actual value was `benign`)
+* False negatives (where actual value was `malignant` but the prediction was `benign`)
+
+The code snippet below generates the dataframes for false positives and false negatives.
+
+```{r}
+
+false_positives <- data.frame(Index=integer(), Predicted=factor(), Actual=factor())
+false_negatives <- data.frame(Index=integer(), Predicted=factor(), Actual=factor())
+for (idx in 1:100) {
+  if (wbcd_test_pred[idx] == "malignant" && wbcd_test_labels[idx] == "benign") {
+    new_row <- data.frame(Index=idx, Predicted=wbcd_test_pred[idx], Actual=wbcd_test_labels[idx])
+    false_positives <- rbind(false_positives, new_row)
+  }
+  if (wbcd_test_pred[idx] == "benign" && wbcd_test_labels[idx] == "malignant") {
+    new_row <- data.frame(Index=idx, Predicted=wbcd_test_pred[idx], Actual=wbcd_test_labels[idx])
+    false_negatives <- rbind(false_negatives, new_row)
+  }
+}
+```
+
+Now that we have two data frames reflecting our false positives and negatives, let's examine these subsets:
+
+```{r}
+false_positives
+false_negatives
+```
+
+With the k-value of 22 (roughly `sqrt(N=469)`), no false positives were predicted, but two false negatives were generated.
+
+In actual usage, false negatives are far more dangerous for cancer patients, because a malignant tumor was incorrectly assumed to be benign, and the patient will not receive further diagnosis steps and treatment options for a malignant disease.
+
+There may be a few ways of improving model performance; examining the model's performance with other k-values would be a useful start, and other options include:
+
+* Testing the model's performance when values aren't normalized
+* Use a weighted voting process with a larger k-value, so that the Euclidian distance between the nearest neighbors emphasizes relationships that are closer to the data point rather than treating all K items with equal importance
+
+We will explore some of these options further in the next section.

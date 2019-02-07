@@ -331,6 +331,13 @@ summarize( bc_data, &quot;Frequency&quot;=count(bc_data$diagnosis), &quot;Percen
 <pre><code>##   Frequency.x Frequency.freq Percentage.x Percentage.freq
 ## 1      benign            357           NA        62.74165
 ## 2   malignant            212           NA        37.25835</code></pre>
+<pre class="r"><code># A better method for percentages:
+# round(prop.table(table(bc_data$diagnosis)) * 100, digits = 1)
+# Better Method Implemented:
+round(prop.table(table(bc_data$diagnosis)) * 100, digits = 1)</code></pre>
+<pre><code>## 
+##    benign malignant 
+##      62.7      37.3</code></pre>
 <p>Summary of these 3 features:</p>
 <pre class="r"><code>summary(bc_data$radius_mean)</code></pre>
 <pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
@@ -341,6 +348,8 @@ summarize( bc_data, &quot;Frequency&quot;=count(bc_data$diagnosis), &quot;Percen
 <pre class="r"><code>summary(bc_data$smoothness_mean)</code></pre>
 <pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 ## 0.05263 0.08637 0.09587 0.09636 0.10530 0.16340</code></pre>
+<p>These features could be problematic because their numerical values are so disparate; if the model looks at numeric values with size being the largest determining factor across different features, then a feature that has larger units or values could be considered more significant or relevant to the outcome than others whose data spread/values are smaller (but is a more significant indicator for classification purposes).</p>
+<p>For this reason, we want to normalize the data in a <code>[0, 1]</code> range.</p>
 </div>
 <div id="transformation-and-normalization" class="section level2">
 <h2>Transformation and Normalization</h2>
@@ -414,6 +423,184 @@ vals</code></pre>
 </div>
 <div id="create-the-datasets-for-training" class="section level2">
 <h2>Create the Datasets for Training</h2>
+<p>We will slice the data sets into two chunks for training and testing.</p>
+<pre class="r"><code>wbcd_train &lt;- wbcd_norm[1:469,]
+wbcd_test &lt;- wbcd_norm[470:569,]</code></pre>
+<p>Next, we will store the target variable for each corresponding dataset as a vector. Because the feature we wish to train the model on is not included in the normalized dataset we created, we must extract it from the original dataframe (and be careful to slice the dataframe with the same indeces we used to create the training &amp; test datasets).</p>
+<pre class="r"><code>wbcd_train_labels &lt;- bc_data[1:469,]$diagnosis
+wbcd_test_labels &lt;- bc_data[470:569,]$diagnosis</code></pre>
+</div>
+<div id="training-a-model-on-the-data" class="section level2">
+<h2>Training a Model on the Data</h2>
+<p>We will use the k-NN implementation from R’s <code>class</code> package. We import it like so:</p>
+<pre class="r"><code>library(class)</code></pre>
+<p>If it is not previously installed, you may install the <code>class</code> package in R Studio by going to <code>Tools -&gt; Install Packages...</code>, entering the package name <code>class</code> into the <code>Packages</code> prompt, and installing it to your default path.</p>
+<div id="finding-k" class="section level5">
+<h5>Finding K</h5>
+<p>Without any other deciding factors influencing what K value is needed for the number of nearest neighbors evaluated, the best option is to use the square root of the training dataset size. In this case, because there are 469 units of observation included in our training dataset, I will initially use a K value of 22.</p>
+</div>
+<div id="create-the-model" class="section level5">
+<h5>Create the Model</h5>
+<p>Here, the call to create the model is done:</p>
+<pre class="r"><code>wbcd_test_pred &lt;- knn(wbcd_train, wbcd_test, wbcd_train_labels, 22)</code></pre>
+</div>
+</div>
+<div id="evaluating-the-models-performance" class="section level2">
+<h2>Evaluating the Model’s Performance</h2>
+<p>Let’s look at the vectors for the test data’s target feature compared with the model’s prediction.</p>
+<pre class="r"><code>prediction_table &lt;- data.frame(wbcd_test_pred, wbcd_test_labels)
+prediction_table</code></pre>
+<pre><code>##     wbcd_test_pred wbcd_test_labels
+## 1           benign           benign
+## 2           benign           benign
+## 3           benign           benign
+## 4           benign           benign
+## 5        malignant        malignant
+## 6           benign           benign
+## 7        malignant        malignant
+## 8           benign           benign
+## 9        malignant        malignant
+## 10          benign           benign
+## 11       malignant        malignant
+## 12          benign           benign
+## 13       malignant        malignant
+## 14       malignant        malignant
+## 15          benign           benign
+## 16          benign           benign
+## 17       malignant        malignant
+## 18          benign           benign
+## 19       malignant        malignant
+## 20          benign           benign
+## 21       malignant        malignant
+## 22       malignant        malignant
+## 23       malignant        malignant
+## 24       malignant        malignant
+## 25          benign           benign
+## 26          benign           benign
+## 27          benign           benign
+## 28          benign           benign
+## 29       malignant        malignant
+## 30       malignant        malignant
+## 31       malignant        malignant
+## 32          benign        malignant
+## 33          benign        malignant
+## 34       malignant        malignant
+## 35          benign           benign
+## 36          benign           benign
+## 37          benign           benign
+## 38          benign           benign
+## 39          benign           benign
+## 40       malignant        malignant
+## 41       malignant        malignant
+## 42          benign           benign
+## 43       malignant        malignant
+## 44       malignant        malignant
+## 45          benign           benign
+## 46       malignant        malignant
+## 47       malignant        malignant
+## 48       malignant        malignant
+## 49       malignant        malignant
+## 50       malignant        malignant
+## 51          benign           benign
+## 52          benign           benign
+## 53          benign           benign
+## 54          benign        malignant
+## 55          benign           benign
+## 56          benign           benign
+## 57          benign           benign
+## 58          benign           benign
+## 59       malignant        malignant
+## 60          benign           benign
+## 61          benign           benign
+## 62          benign           benign
+## 63          benign           benign
+## 64          benign           benign
+## 65       malignant        malignant
+## 66       malignant        malignant
+## 67          benign           benign
+## 68          benign           benign
+## 69          benign           benign
+## 70          benign           benign
+## 71          benign           benign
+## 72       malignant        malignant
+## 73          benign           benign
+## 74          benign           benign
+## 75       malignant        malignant
+## 76       malignant        malignant
+## 77          benign           benign
+## 78          benign           benign
+## 79          benign           benign
+## 80          benign           benign
+## 81          benign           benign
+## 82          benign           benign
+## 83          benign           benign
+## 84       malignant        malignant
+## 85          benign           benign
+## 86          benign           benign
+## 87       malignant        malignant
+## 88          benign           benign
+## 89          benign           benign
+## 90          benign           benign
+## 91          benign           benign
+## 92       malignant        malignant
+## 93          benign           benign
+## 94          benign           benign
+## 95          benign           benign
+## 96          benign           benign
+## 97          benign           benign
+## 98       malignant        malignant
+## 99          benign           benign
+## 100      malignant        malignant</code></pre>
+<p>There are a few ways to evaluate the performance of the model; we primarily want to compare the test data’s true labels (contained in <code>wbcd_test_labels</code>) with the <code>knn()</code> call output (contained in <code>wbcd_test_pred</code>).</p>
+<p>First, we examine the relationship between the two vectors using Pearson’s Chi-squared test.</p>
+<p>The premise of a Chi-squared test is the null hypothesis: there is no relationship between the two variables. In this example, the null and alternative hypotheses can be stated as:</p>
+<ul>
+<li>Null Hypothesis: There is no relationship between the model’s prediction and the actual value of the target variable.</li>
+<li>Alternative Hypothesis: There is a statistically significant relationship between the model’s prediction and the actual value of the target variable; the model’s predicted value is a good prediction of the actual value.</li>
+</ul>
+<p>In this test, we can only choose to reject the null hypothesis. We can make this determination from the Chi-square test’s p-value; a p-value that is less than our pre-determined significance level indicates that the null hypothesis can be rejected and there is a significant correlation between the two variables. For this example, we choose a significance level of 0.05.</p>
+<pre class="r"><code>chisq.test(wbcd_test_labels, wbcd_test_pred)</code></pre>
+<pre><code>## 
+##  Pearson's Chi-squared test with Yates' continuity correction
+## 
+## data:  wbcd_test_labels and wbcd_test_pred
+## X-squared = 84.02, df = 1, p-value &lt; 2.2e-16</code></pre>
+<p>Based on the Chi-squared test, this model is very accurate because the p-value is so small (less than <code>2.2e-16</code>).</p>
+<p>Let us now examine the individual items whose predicted results were different from the actual value. We will examine two different possibilities:</p>
+<ul>
+<li>False positives (where prediction resulted in <code>malignant</code> label but the actual value was <code>benign</code>)</li>
+<li>False negatives (where actual value was <code>malignant</code> but the prediction was <code>benign</code>)</li>
+</ul>
+<p>The code snippet below generates the dataframes for false positives and false negatives.</p>
+<pre class="r"><code>false_positives &lt;- data.frame(Index=integer(), Predicted=factor(), Actual=factor())
+false_negatives &lt;- data.frame(Index=integer(), Predicted=factor(), Actual=factor())
+for (idx in 1:100) {
+  if (wbcd_test_pred[idx] == &quot;malignant&quot; &amp;&amp; wbcd_test_labels[idx] == &quot;benign&quot;) {
+    new_row &lt;- data.frame(Index=idx, Predicted=wbcd_test_pred[idx], Actual=wbcd_test_labels[idx])
+    false_positives &lt;- rbind(false_positives, new_row)
+  }
+  if (wbcd_test_pred[idx] == &quot;benign&quot; &amp;&amp; wbcd_test_labels[idx] == &quot;malignant&quot;) {
+    new_row &lt;- data.frame(Index=idx, Predicted=wbcd_test_pred[idx], Actual=wbcd_test_labels[idx])
+    false_negatives &lt;- rbind(false_negatives, new_row)
+  }
+}</code></pre>
+<p>Now that we have two data frames reflecting our false positives and negatives, let’s examine these subsets:</p>
+<pre class="r"><code>false_positives</code></pre>
+<pre><code>## [1] Index     Predicted Actual   
+## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
+<pre class="r"><code>false_negatives</code></pre>
+<pre><code>##   Index Predicted    Actual
+## 1    32    benign malignant
+## 2    33    benign malignant
+## 3    54    benign malignant</code></pre>
+<p>With the k-value of 22 (roughly <code>sqrt(N=469)</code>), no false positives were predicted, but two false negatives were generated.</p>
+<p>In actual usage, false negatives are far more dangerous for cancer patients, because a malignant tumor was incorrectly assumed to be benign, and the patient will not receive further diagnosis steps and treatment options for a malignant disease.</p>
+<p>There may be a few ways of improving model performance; examining the model’s performance with other k-values would be a useful start, and other options include:</p>
+<ul>
+<li>Testing the model’s performance when values aren’t normalized</li>
+<li>Use a weighted voting process with a larger k-value, so that the Euclidian distance between the nearest neighbors emphasizes relationships that are closer to the data point rather than treating all K items with equal importance</li>
+</ul>
+<p>We will explore some of these options further in the next section.</p>
 </div>
 
 
