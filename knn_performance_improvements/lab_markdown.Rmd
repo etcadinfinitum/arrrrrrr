@@ -356,7 +356,7 @@ for (k_val in 1:160) {
 We are looking for an improvement in the false negatives values in this model; the false negatives are plotted here:
 
 ```{r}
-plot(kknn_false_counts$K, kknn_false_counts$FalseNegatives, col="red", ylim=range(c(kknn_false_counts$FalseNegatives, false_counts$FalseNegatives)), xlab="K", ylab="False Negative Count", pch=0)
+plot(kknn_false_counts$K, kknn_false_counts$FalseNegatives, col="red", ylim=range(c(kknn_false_counts$FalseNegatives, false_counts$FalseNegatives)), xlab="K", ylab="False Negative Count", main="Type II Errors for Traditional k-NN and KKNN", pch=0)
 par(new=TRUE)
 plot(false_counts$K, false_counts$FalseNegatives, col="blue", axes=FALSE, xlab="", ylab="", pch=0)
 legend(0, 8.5, c("KKNN", "Original k-NN"), col=c("red", "blue"), pch=0)
@@ -365,5 +365,8 @@ legend(0, 8.5, c("KKNN", "Original k-NN"), col=c("red", "blue"), pch=0)
 What about the model's accuracy across all k values?
 
 ```{r}
-plot(kknn_false_counts$K, 100 - (kknn_false_counts$Error * 100))
+plot(kknn_false_counts$K, 100 - (kknn_false_counts$Error * 100), pch=2, col="red", xlab="K", ylab="Accuracy (%)", main="Accuracy of Traditional k-NN and KKNN")
+par(new=TRUE)
+plot(false_counts$K, 100 - (false_counts$Error * 100), pch=2, col="blue", axes=FALSE, xlab="", ylab="")
+legend("bottomleft", c("KKNN", "Original k-NN"), col=c("red", "blue"), pch=2)
 ```
