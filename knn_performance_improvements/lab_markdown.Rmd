@@ -1,5 +1,5 @@
 ---
-title: 'Lab 3: KNN'
+title: 'Assignment 3: KNN Performance Improvements'
 author: "Lizzy Presland"
 date: "January 30, 2019"
 output: html_document
@@ -159,7 +159,8 @@ The premise of a Chi-squared test is the null hypothesis: there is no relationsh
 In this test, we can only choose to reject the null hypothesis. We can make this determination from the Chi-square test's p-value; a p-value that is less than our pre-determined significance level indicates that the null hypothesis can be rejected and there is a significant correlation between the two variables. For this example, we choose a significance level of 0.05.
 
 ```{r}
-chisq.test(wbcd_test_labels, wbcd_test_pred)
+chisq_result <- chisq.test(wbcd_test_labels, wbcd_test_pred)
+chisq_result
 ```
 
 Based on the Chi-squared test, this model is very accurate because the p-value is so small (less than `2.2e-16`).
@@ -254,15 +255,31 @@ false_counts <- data.frame(K=integer(), FalsePositives=integer(), FalseNegatives
 for (k in 1:160) {
   wbcd_test_pred <- knn(wbcd_train, wbcd_test, wbcd_train_labels, k)
   results <- get_false_tables(wbcd_test_pred)
-  # TODO: fix placeholder p-val
-  new_row <- data.frame(K=k, FalsePositives=results[1], FalseNegatives=results[2], PVal=0.0)
+  chisq_result <- chisq.test(wbcd_test_labels, wbcd_test_pred)
+  new_row <- data.frame(K=k, FalsePositives=results[[1]], FalseNegatives=results[[2]], PVal=chisq_result$p.value)
   false_counts <- rbind(false_counts, new_row)
 }
 ```
 
-Let's confirm that the output looks okay:
+To get a visual representation of model performance, let's plot the number of false positives and false negatives for each k.
+
+First, false positives:
 
 ```{r}
-head(false_counts)
+plot(false_counts$K, false_counts$FalsePositives)
 ```
+
+All false positive results are clustered at the very low end of the range of k values, which indicates that false negatives occur when the value of k is low and the network does not have enough nearest neighbors to correctly associate biopsy traits with a benign tumor instead of a malignant one.
+
+However, as stated before, false negatives are the results that we are more concerned with. Recall that in actual usage, false negatives are far more dangerous for cancer patients; when a malignant tumor is incorrectly assumed to be benign, the patient will not receive further diagnosis steps and treatment options for a malignant disease which will affect their life expectancy and allow the disease to progress further.
+
+The scatterplot of false negatives for varying k is:
+
+```{r}
+plot(false_counts$K, false_counts$FalseNegatives)
+```
+
+Wow! There are way too many false negatives as k increases! Based on this data, the results with a k-value in `[1, 25]` will produce the lowest number of false negatives, which is our preferred outcome.
+
+# TODO: create a plot of Type I and Type II errors? How to do this??
 
