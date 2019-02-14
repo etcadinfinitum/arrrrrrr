@@ -207,7 +207,7 @@ false_positives
 false_negatives
 ```
 
-With the k-value of 22 (roughly `sqrt(N=469)`), no false positives were predicted, but two false negatives were generated.
+With the k-value of 22 (roughly `sqrt(N=469)`), `r nrow(false_positives)` false positives were predicted, but `r nrow(false_negatives)` false negatives were generated.
 
 In actual usage, false negatives are far more dangerous for cancer patients, because a malignant tumor was incorrectly assumed to be benign, and the patient will not receive further diagnosis steps and treatment options for a malignant disease.
 
@@ -222,7 +222,7 @@ error_rate
 accuracy
 ```
 
-These calculations indicate that the model is 97% accurate and has a 3% error rate, which is reasonable.
+These calculations indicate that the model is has an accuracy of `r accuracy * 100`% and has an error rate of `r error_rate * 100`%, which is reasonable.
 
 #### Improving the Model
 
@@ -305,7 +305,7 @@ plot(false_counts$K, 100 - (false_counts$Error * 100))
 
 The model starts to lose its high accuracy alues at around `k=25`, and decreases as `k` increases (an unsurprising result but still worth noting).
 
-###### Type I and Type II errors for variable-K
+##### Type I and Type II errors for models with varying K
 
 To get a visual representation of model performance relative to Type I and Type II errors, let's plot the number of false positives and false negatives for each k.
 
@@ -328,8 +328,6 @@ plot(false_counts$K, false_counts$FalseNegatives)
 Wow! There are way too many false negatives as k increases! Based on this data, the results with a k-value in `[1, 25]` will produce the lowest number of false negatives, which is our preferred outcome.
 
 **These results indicate that smaller values for K lead to lower error rates.**
-
-# TODO: create a plot of Type I and Type II errors? How to do this??
 
 #### Method 2: Weighted k-NN Model
 
@@ -370,3 +368,5 @@ par(new=TRUE)
 plot(false_counts$K, 100 - (false_counts$Error * 100), pch=2, col="blue", axes=FALSE, xlab="", ylab="")
 legend("bottomleft", c("KKNN", "Original k-NN"), col=c("red", "blue"), pch=2)
 ```
+
+**These results indicate that while the overall accuracy of the KKNN model decreases for large K (relative to the traditional model), the KKNN model has fewer Type II errors as K increases (relative to the traditional model).** 
