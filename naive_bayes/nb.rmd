@@ -1,0 +1,165 @@
+---
+title: "Naive Bayes"
+author: "Lizzy Presland"
+date: "February 23, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## A Human Evaluation of Spam vs Ham
+
+(For Q1) 
+
+Looking at the examples in the assignment introduction, there appears to be a few distinguishing characteristics of spam:
+
+- Use of all-caps words (eg "FREE", "GO", "MUSIC")
+- Use of numerals / numeric digits
+- Mention of words, phrases and symbols related to money (specifically "free", the English pound sign, "gift", "win", "congratulations")
+- Use of second-person addressing (though this is not uncommon in ham messages; it is an interesting characteristic in the provided examples)
+
+## Import and Explore the Data
+
+```{r}
+# Q2
+sms_raw <- read.csv("sms_spam.csv", header=TRUE)
+# Q3
+str(sms_raw)
+summary(sms_raw)
+```
+
+(For Q4): The target variable is the first column, which R loads as a **two-level factor** ("spam" and "ham").
+
+```{r}
+# Q5
+sms_raw$type <- as.factor(sms_raw$type)
+table(sms_raw$type)
+```
+
+## Clean and Standardize the Data
+
+```{r}
+# Q6
+library(tm)
+sms_corpus <- Corpus(VectorSource(sms_raw$text))
+# Q7
+print(sms_corpus)
+```
+
+There are 5559 documents in the corpus.
+
+Some experimenting with the various ways to view corpus data:
+
+```{r}
+inspect(sms_corpus[1:3])
+# Q8 
+extract_text <- function(arg){as.character(arg)}
+first_three_docs <- lapply(sms_corpus[1:3], extract_text)
+first_three_docs
+```
+
+We will now clean and standardize the corpus per the assignment specifications.
+
+```{r}
+corpus_clean <- tm_map(sms_corpus, tolower)
+# Q9: original text
+first_three_docs[[1]]
+# Q9: remapped text
+as.character(corpus_clean[[1]])
+```
+
+The above blocks adjusted all uppercase letters to lowercase (to establish a better baseline for word equivalencies). We will also make the following adjustments:
+
+* Remove all numeric digits from the corpus (Q10)
+* Remove all "stop words" (such as "to", "and", "but", etc)
+* Remove all punctuation (Q11)
+* Stemming all similar words (eg replace "learned", "learning", "learns", etc with "learn")
+* Remove additional whitespace
+
+```{r}
+# Q10
+corpus_clean <- tm_map(corpus_clean, removeNumbers)
+corpus_clean <- tm_map(corpus_clean, removeWords, stopwords())
+# Q11
+corpus_clean <- tm_map(corpus_clean, removePunctuation)
+library(SnowballC)
+corpus_clean <- tm_map(corpus_clean, stemDocument)
+corpus_clean <- tm_map(corpus_clean, stripWhitespace)
+```
+
+Here's a view of the 5th document before and after standardization:
+
+```{r}
+# Q12: before standardization
+as.character(sms_corpus[[5]])
+# Q12: after standardization
+as.character(corpus_clean[[5]])
+```
+
+## Creating the "Bag'o'Words"
+
+```{r}
+# having issues with the call below: 
+# error is: "Line 102: Error in `[.simple_triplet_matrix`(object, !nas) : Logical vector subscripting disabled for this object. Calls: <Anonymous> ... [.DocumentTermMatrix -> NextMethod -> [.simple_triplet_matrix Execution halted"
+sms_dtm <- DocumentTermMatrix(corpus_clean)
+# note: error was due to trying to call summary(sms_dtm)
+```
+
+## Create Training and Test Datasets
+
+```{r}
+# Q13
+sms_dtm_train <- sms_dtm[1:4447]
+sms_dtm_test <- sms_dtm[4448:5559]
+# Q14
+sms_train_labels <- sms_raw$type[1:4447]
+sms_test_labels <- sms_raw$type[4448:5559]
+```
+
+Confirm that the "spam" and "ham" items are evenly (ish) distributed between the training and test data:
+
+```{r}
+prop.table(table(sms_train_labels))
+prop.table(table(sms_test_labels))
+```
+
+Looks pretty good, so let's keep going!
+
+## Word Clouds
+
+```{r}
+# Q15
+library(wordcloud)
+wordcloud(corpus_clean, min.freq=50, random.order=FALSE)
+```
+
+Visualize spam & ham wordclouds.
+
+```{r}
+spam <- subset(sms_raw, type=="spam")
+ham <- subset(sms_raw, type=="ham")
+wordcloud(spam$text, max.words = 40, scal=c(3, 0.5))
+wordcloud(ham$text, max.words = 40, scal=c(3, 0.5))
+```
+
+Regarding Question 16: The "spam" cloud heavily favors certain words, whereas the "ham" cloud has a more uniform distribution of the wordcloud's word size (which presumably corresponds to the frequency of the word's occurence).
+
+## Indicator Features for Frequent Words
+
+```{r}
+# ERROR
+# Quitting from lines 152-156 (nb.rmd) 
+# Error: $ operator is invalid for atomic vectors
+# Execution halted
+
+# ERROR IS FROM THE LINE BELOW
+# sms_freq_words <- findFreqTerms(sms_dtm_train, 5)
+# Q17
+# str(sms_freq_words)
+# summary(sms_freq_words)
+
+sms_dtm
+```
+
