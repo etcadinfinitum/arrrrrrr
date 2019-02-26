@@ -1,0 +1,110 @@
+---
+title: "Decision Trees"
+author: "Lizzy Presland"
+date: "February 25, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Collecting the Data
+
+```{r}
+# Q1
+data_raw <- read.csv("credit.csv", header=TRUE)
+# Note: regarding question 1, stringsAsFactors will be called for columns as needed, not at time of import
+
+# Q2
+str(data_raw)
+```
+
+#### **3. Which features can be a possible predictor of a default loan?**
+
+In my opinion, all of the following features would be effective predictors for a loan that will default:
+
+* Credit History
+* Other Credit
+* Existing Loans Count
+* Percent of Income
+* Loan Amount
+* Savings Balance
+
+#### **4. How can you check and study those features? Explain.**
+
+There are a few ways of studying these features. Here are a few different ways of analyzing:
+
+* Looking at the center and spread measures of each feature
+* Looking at the table of default rates compared with various features of interest; a few of those tables are constructed below.
+
+```{r}
+# Q2, Q4 Continued
+summary(data_raw)
+# Q4 Continued
+table(data_raw$credit_history, data_raw$default)
+prop.table(table(data_raw$credit_history, data_raw$default))
+table(data_raw$savings_balance, data_raw$default)
+```
+
+#### **5. What percentage of the loans in the dataset went into default? Is it high? How might this result affect the loaning bank?**
+
+```{r}
+prop.table(table(data_raw$default))
+```
+
+Only 30% of the examples resulted in a defaulted loan; this is a fairly significant proportion of the sample, especially in a financial asset recovery context. Obviously, this statistic represents a lot of lost money for the lending institution.
+
+## Creating Random Training and Test Datasets
+
+#### **6. Why is the slicing method of obtaining test & training data unwise in this situation?**
+
+Simply taking contiguous slices of the R dataframe should NOT be done in this situation because the data is sorted in a particular fashion, so the test and training data will not be representative of a randomly selected sample when they are selected in sorted order.
+
+#### **7. Cite two methods of creating a random sample in R.**
+
+* Use `sample()` to perform random sampling on the dataset
+* Use `order(runif())` to extract a random sequence of items from the dataset using the uniform distribution
+
+#### **8. Create the random training and test sample using a seed of 123. The sampling methodology is up to the researcher.**
+
+I will use the `sample()` function to randomly sample 60% of the data for training and 40% of the data for testing.
+
+```{r}
+set.seed(123)
+train_indeces <- sample(1000, 600)
+credit_train <- data_raw[train_indeces,]
+credit_test <- data_raw[-train_indeces,]
+```
+
+#### **9. Evaluate the dataset to ensure the distribution is fair.**
+
+```{r}
+prop.table(table(credit_train$default))
+prop.table(table(credit_test$default))
+```
+
+## Training The Model on The Data
+
+```{r}
+# Q10
+library(C50)
+# Q11
+model <- C5.0(credit_train[-17], credit_train$default)
+summary(model)
+prediction <- predict(model, credit_test)
+```
+
+#### **12. Explain the Model's Results**
+
+To look at the accuracy of our model, we will perform a few tests on the resulting vectors (namely, the `prediction` vector created by the model compared with the `credit_test$default` vector from the test dataset).
+
+```{r}
+table(prediction, credit_test$default)
+chisq.test(prediction, credit_test$default)
+```
+
+Our results are great!
+
+#### **13. What does the tree look like??**
+
