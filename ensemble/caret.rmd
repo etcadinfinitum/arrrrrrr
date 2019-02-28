@@ -1,0 +1,32 @@
+---
+title: "Caret Experiments"
+author: "Lizzy Presland"
+date: "February 27, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Caret Example
+
+#### A Simple Example
+
+```{r}
+credit_data <- read.csv("credit.csv", stringsAsFactors = TRUE)
+library(caret)
+m <- train(default ~ ., data = credit_data, method = "C5.0")
+m
+```
+
+#### A Slightly More Complicated Example
+
+Now, let's tune parameters...
+
+```{r}
+ctrl <- trainControl(method = "cv", number = 10, selectionFunction = "oneSE")
+grid <- expand.grid(.model = "tree", .trials = c(1, 5, 10, 15, 20, 25, 30, 35), .winnow="FALSE")
+m <- train(default ~ ., data=credit_data, method="C5.0", metric="Kappa", trControl = ctrl, tuneGrid = grid)
+m
+```
