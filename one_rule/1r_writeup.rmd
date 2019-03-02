@@ -1,0 +1,140 @@
+---
+title: 'Assignment 5: Rule Learning Method'
+author: "Lizzy Presland"
+date: "February 27, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Rule Learning Method: Methodology of the One-Rule (1R) Method
+
+The rule learning method is a more generalized form of an algorithm developed by Robert Holte of the University of Ottowa. The algorithm Holte developed can be summarized as follows (Nevill-Manning 1):
+
+```
+For each attribute a, form a rule as follows:
+    For each value v from the domain of a,
+        Select the set of instances where a has value v.
+        Let c be the most frequent class in that set.
+        Add the following clause to the rule for a:
+            if a has value v then the class is c
+Calculate the classification accuracy of this rule.
+Use the rule with the highest classification accuracy.
+```
+
+In plain English, the algorithm creates a single classification rule for each feature of the dataset, and then chooses the model's rule to be the classification rule that has the highest accuracy.
+
+Several additional attributes of the one-rule (1R) classification system are worthy of note:
+
+* Continuous values for an attribute are grouped into intervals (ie buckets).
+* The classification rules are ranked and evaluated based on their error rate, whereas decision trees (C4, C5.0) are ranked based on the calculated entropy of the rule (Holte 64).
+* To prevent overfitting, the 1R program has a user-defined lower limit on the number of examples in each interval (Holte 64).
+
+## 1R Advantages & Disadvantages<a name="advantage"></a>
+
+**Advantages:** 
+
+* The algorithm is very simple to implement.
+* Similarly, the algorithm allows for direct interpretation by researchers and laymen alike.
+* 1R models produce remarkably good results with far less complex models and analysis (when compared with the C4 decision tree algorithm) (Holte 63).
+
+**Disadvantages:**
+
+* Complex relationships between attributes are not considered in the classification of each feature (in other words, the approach is naive).
+* The accuracy of the 1R approach is lower than most outcomes reached by decision trees (Holte 63).
+* Classification rules based on nominal attributes with a unique category for each example are extremely overfitted and perform very poorly on test datasets (Holte 65). This requires special attention to the datasets during data exploration and cleaning.
+* In the traditional 1R implementation, missing values are treated as a legitimate data value (Holte 64). This may produce inconsistent results because a missing value is not necessarily a useful predictor of a class. This core assumption is not universally applicable between datasets and should be considered carefully in the creation and training of a 1R model (Nevill-Manning 3).
+* The 1R algorithm is not well-suited to specific types of datasets. Specifically, 1R significantly underperforms (compared to C4 decision trees) when the majority of the dataset's features are ordinal/nominal types and the number of levels in most of these features is equal to or less than the number of classes in the target variable (Holte 67).
+
+## `OneR`: An Improved Implementation of Holte's 1R
+
+The R language has a readily available library which implements the 1R methodology (von Jouanne-Diedrich). The fundamental implementation of the algorithm remains consistent with the methods described by Holte and Nevill-Manning, but with a few distinctions and improvements.
+
+Notable implementation details (von Jouanne-Diedrich):
+
+* Optimization of the binning process for continuous variables using pairwise logistic regressions.
+* User choice regarding how missing values are handled; the implementation's default method is to omit missing values from the categorization process for that level, but the user can choose to have missing values grouped into a separate level ("NA").
+* A tie-breaking analysis is performed when two classification rules perform equally as well for different features. Each applicable rule is tested against each other using Pearson's Chi squared test and the rule with the smallest p-value is chosen. (This contrasts the original implementation of 1R, where the first rule is chosen by default.)
+
+## Using `R`'s `OneR` Package: An Example
+
+For illustrative purposes, I will create a `OneR` model which creates a classifier for the breast cancer dataset. I chose this dataset for the following reasons:
+
+* The dataset has many features to explore
+* The dataset's features are entirely of a continuous numerical type
+
+These advantages will be very useful for this particular approach to machine learning. For all other datasets that have been discussed thus far in the coursework for CSS 490, I ruled them out for the following reasons:
+
+| Dataset | Disadvantage |
+| ------- | ------------------------------------------------------------------------- |
+| Credit  | There are a large number of features in this dataset which have very few levels, and many of the numeric features have a very limited range of values (including, but not limited to, `existing_loan_count`, `dependents`, `percent_of_income`). Due to the disadvantages of 1R discussed [previously](#advantage), I chose not to work with this dataset. |
+| Insurance | For similar reasons as stated with respect to the `credit` dataset, this dataset is not well-suited to 1R. Out of the 6 features available for classification, 4 of them have 5 for fewer levels (namely `sex`, `children`, `smoker`, and `region`. Additionally, the target variable (`charges`) is a continuous variable, which further complicates the data handling because the `charges` data must be bucketed for classification. |
+| SMS Ham & Spam | This dataset requires substantial manipulation to be usable in this context and is not practical for the purposes of this demonstration. |
+
+### Loading the Dataset
+
+For the chosen dataset, we will perform the following manipulations:
+
+* Load the dataset from the CSV file
+* Remove the patient ID feature from the dataset
+* Move the `diagnosis` feature column as the last column of the dataset (due to `OneR` inferring the target variable from column order)
+* Designate a training dataset and a test dataset
+* Show a summary of the data (using `summary()` and `head()`)
+* Confirm that our training & test datasets have a fairly even distribution of 
+
+```{r}
+bc_raw <- read.csv("wisc_bc_data.csv", stringsAsFactors = TRUE)
+# remove first column (patient ID)
+bc_raw <- bc_raw[-1]
+# rearrange the column order
+bc_raw <- bc_raw[,c(2:ncol(bc_raw), 1)]
+# let's confirm that our data frame looks as expected
+head(bc_raw)
+# segment the data into training and test datasets
+bc_train_set <- sample(1:nrow(bc_raw), 0.7 * nrow(bc_raw))
+bc_train <- bc_raw[bc_train_set,]
+bc_test <- bc_raw[-bc_train_set,]
+summary(bc_raw)
+round(prop.table(table(bc_train$diagnosis)) * 100, digits = 1)
+round(prop.table(table(bc_test$diagnosis)) * 100, digits = 1)
+```
+
+### Creating a Model Using `OneR`
+
+The R language implementation of the 1R algorithm is available in the R Project's CRAN package repository. Once installed, the library can be loaded like so:
+
+```{r}
+library(OneR)
+```
+
+Now, we will take our loaded dataset and use `OneR`'s `optbin()` method to find optimal level breakpoints for each feature. For visibility, we will also look at a small sample of the resulting data frame so we can see the value buckets.
+
+```{r}
+data_train <- optbin(bc_train)
+head(data_train)
+```
+
+Now, we will create and train the `OneR` model.
+
+```{r}
+model <- OneR(data_train, verbose=TRUE)
+```
+
+Now, we will create a prediction for the model based on the test data and evaluate the model's accuracy.
+
+```{r}
+prediction <- predict(model, bc_test)
+eval <- eval_model(prediction, bc_test)
+```
+
+Our model produces predictions whose accuracy is slightly lower than the accuracy of the predicting attribute during training, but the accuracy is still fairly good given the simplicity of the algorithm. The total accuracy is `r round((eval$correct_instances * 100) / eval$total_instances, digits = 1)`%. There are a higher number of Type II errors than Type I errors, which is of some concern to us, so this model may not be ideal for evaluating diagnostic decisions on this dataset in a real-world application.
+
+## Bibliography
+
+Nevill-Manning, Craig et. al. "The Development of Holte's 1R Classifier".  https://www.cs.waikato.ac.nz/ml/publications/1995/Nevill-Manning95-1R.pdf. Accessed 27 Feb 2019.
+
+Holte, Robert. "Very Simple Classification Rules Perform Well on Most Commonly Used Datasets". *Machine Learning*. Vol 11, pp. 63-91. 1993.  http://www.mlpack.org/papers/ds.pdf. Accessed 28 Feb 2019.
+
+von Jouanne-Diedrich, Holger K. "OneR - Establishing a New Baseline for Machine Learning Classification Models". *R Project*. 5 May 2017. https://cran.r-project.org/web/packages/OneR/vignettes/OneR.html. Accessed 1 Mar 2019.
