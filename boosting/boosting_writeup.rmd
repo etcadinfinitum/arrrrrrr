@@ -1,0 +1,18 @@
+---
+title: 'Assignment 6: Boosting Methods'
+author: "Lizzy Presland"
+date: "March 4, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## What is the boosting method?
+
+
+
+## Bibliography
+
+Schapire, Robert E. (1990). "The Strength of Weak Learnability". *Machine Learning.* 5 (2): 197–227. CiteSeerX 10.1.1.20.723. doi:10.1007/bf00116037. Archived from the original (PDF) on 2012-10-10. Retrieved 2012-08-23.
