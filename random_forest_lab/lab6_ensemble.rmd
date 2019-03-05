@@ -1,0 +1,37 @@
+---
+title: 'Lab 6: Ensemble Methods for Machine Learning'
+author: "Lizzy Presland"
+date: "March 4, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Bagging the Data
+
+```{r}
+# Q1 
+data_raw <- read.csv("credit.csv", stringsAsFactors = TRUE)
+train_rows = sample(1:nrow(data_raw), 0.8 * nrow(data_raw))
+train_data <- data_raw[train_rows,]
+test_data <- data_raw[-train_rows,]
+library(caret)
+# head(data_raw)
+# Q2
+set.seed(300)
+mybag <- train(default ~ ., data=train_data, method="treebag")
+# Q3
+prediction <- predict(mybag, test_data)
+chisq.test(prediction, test_data$default)
+```
+
+I don't immediately recall how to get the confusion matrix, accuracy, and error rate from this library package, so I am moving on for the time being. **TODO**
+
+## Random Forest Methods
+
+```{r}
+# Q5
+library(randomForest)
+
