@@ -193,9 +193,134 @@ $(document).ready(function () {
 
 <div id="what-is-the-boosting-method" class="section level2">
 <h2>What is the boosting method?</h2>
+<p>The boosting method is a meta-algorithmic (a generalized problem-solving technique with no unique specific algorithm) methodology of improving a set of weak classifiers. The basic premise is to create a strong model from a set of weaker classifiers and recalculate the weights given to each individual classifier based on the performance of all of the classifiers in the model, relative to each other.</p>
+</div>
+<div id="how-does-the-boosting-method-work" class="section level2">
+<h2>How does the boosting method work?</h2>
+<p>The boosting method can be implemented in a variety of ways; the most common way is to begin with a single model, and to train the model on a dataset. After that, successive weak classifiers are added to the model iteratively. At each iteration, the accuracy of each individual classifier is calculated and assigned a weight value. The classifiers with the highest accuracy have a higher weight value than low-accuracy classifiers.</p>
+<p>This methodology is best illustrated with a binary classifier; the example that follows uses a binary classifier indicator.</p>
+<p>Take, for instance, a binary classification model with 5 individual weak classifiers. The model’s individual weights are as follows:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Classifier</th>
+<th>Weight</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>0.2</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>0.5</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>0.8</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>0.2</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>0.9</td>
+</tr>
+</tbody>
+</table>
+<p>When this model makes a prediction, the binary classification of each individual classifier is calculated separately, and the model uses a formula to calculate the weighted sum of the predictions and uses this value to make a classification prediction.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Classifier</th>
+<th>Weight</th>
+<th>Prediction (1 or -1 for binary class)</th>
+<th>Weighted Prediction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>0.2</td>
+<td>1.0</td>
+<td>0.2</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>0.5</td>
+<td>1.0</td>
+<td>0.5</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>0.8</td>
+<td>-1.0</td>
+<td>-0.8</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>0.2</td>
+<td>1.0</td>
+<td>0.2</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>0.9</td>
+<td>-1.0</td>
+<td>-0.9</td>
+</tr>
+</tbody>
+</table>
+<p>The cumulative sum of the weighted predictions of this model is -0.8, so the model will output the class associated with -1.0 as its overall prediction.</p>
+</div>
+<div id="using-boosting-in-r-adaboost" class="section level2">
+<h2>Using boosting in R: AdaBoost</h2>
+<p>AdaBoost is the first, and most significant, implementation of a boosting algorithm in machine learning. It is part of the <code>caret</code> package for R, so we will use this to create a prediction engine for a dataset.</p>
+<p>Important considerations for using AdaBoost (Brownlee):</p>
+<ul>
+<li>Quality Data: Training data should be of high quality to limit misclassifications by weak learners where preventable.</li>
+<li>Outliers: Because the AdaBoost methodology will attempt to reclassify items until the model is as accurate as possible or the user-specified maximum number of classifiers has been added, it is wise to examine the dataset for outlier examples.</li>
+<li>Noisy Data: AdaBoost does not handle noisy data very well (for similar reasons as above); in particular, if the target variable is noisy, then the algorithm will not perform very well.</li>
+</ul>
+<p>For ease of use, I will use the <code>credit</code> dataset which predicts loan default rates. I have chosen this dataset because it is an interesting one, and I am curious to see how it performs. (Note: this is not an informed decision based on the points above, and a more appropriate dataset may be chosen for this particular problem.)</p>
+<p>For demonstration purposes, the package <code>fastAdaboost</code> will be used to train a classifier on the <code>credit</code> dataset.</p>
+<pre class="r"><code># load the caret library
+library(fastAdaboost)
+# load the dataset, and split into training and test sets
+data_raw &lt;- read.csv(&quot;credit.csv&quot;, stringsAsFactors = TRUE)
+train_indices &lt;- sample(1:nrow(data_raw), 0.8 * nrow(data_raw))
+train_data &lt;- data_raw[train_indices,]
+test_data &lt;- data_raw[-train_indices,]</code></pre>
+<p>Now that we have some training and test data separated out, let’s examine a simple implementation of AdaBoost.</p>
+<pre class="r"><code># train an adaboost model from the fastAdaboost library
+# this example will use 10 classifiers to create the model
+n_classifiers &lt;- 10
+model &lt;- adaboost(default ~ ., data=train_data, n_classifiers)
+prediction &lt;- predict(model, newdata=test_data)
+# let's examine the error rate of this model
+errors &lt;- prediction$error
+errors</code></pre>
+<pre><code>## [1] 0.27</code></pre>
+<pre class="r"><code># let's look at the correlation between the test data's target value and the prediction vector
+chisq.test(test_data$default, prediction$class)</code></pre>
+<pre><code>## 
+##  Pearson's Chi-squared test with Yates' continuity correction
+## 
+## data:  test_data$default and prediction$class
+## X-squared = 27.227, df = 1, p-value = 1.809e-07</code></pre>
+<p>The example above created a prediction model with 10 weak learner classifiers, which had an overall error rate of 0.27.</p>
+<p>Let’s try the same implementation again, but with other quantities of weak learner classifiers. We will store the number of classifiers used, and the error rate of the resulting model when predicting a class value on the test data.</p>
+<pre class="r"><code>for (i in c(10, 20, 30, 50, 100))
+  n_classifiers &lt;- i
+  model &lt;- adaboost(default ~ ., data=train_data, n_classifiers)
+  prediction &lt;- predict(model, newdata = test_data)
+  errors &lt;- prediction$error</code></pre>
 </div>
 <div id="bibliography" class="section level2">
 <h2>Bibliography</h2>
+<p>Brownlee, Jason. “Boosting and AdaBoost for Machine Learning.” <em>Machine Learning Mastery.</em> 2016 April 25. <a href="https://machinelearningmastery.com/boosting-and-adaboost-for-machine-learning/" class="uri">https://machinelearningmastery.com/boosting-and-adaboost-for-machine-learning/</a>. Accessed 2019 Mar 5.</p>
 <p>Schapire, Robert E. (1990). “The Strength of Weak Learnability”. <em>Machine Learning.</em> 5 (2): 197–227. CiteSeerX 10.1.1.20.723. <a href="doi:10.1007/bf00116037" class="uri">doi:10.1007/bf00116037</a>. Archived from the original (PDF) on 2012-10-10. Retrieved 2012-08-23.</p>
 </div>
 

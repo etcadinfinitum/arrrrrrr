@@ -11,8 +11,91 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## What is the boosting method?
 
+The boosting method is a meta-algorithmic (a generalized problem-solving technique with no unique specific algorithm) methodology of improving a set of weak classifiers. The basic premise is to create a strong model from a set of weaker classifiers and recalculate the weights given to each individual classifier based on the performance of all of the classifiers in the model, relative to each other.
 
+## How does the boosting method work?
+
+The boosting method can be implemented in a variety of ways; the most common way is to begin with a single model, and to train the model on a dataset. After that, successive weak classifiers are added to the model iteratively. At each iteration, the accuracy of each individual classifier is calculated and assigned a weight value. The classifiers with the highest accuracy have a higher weight value than low-accuracy classifiers.
+
+This methodology is best illustrated with a binary classifier; the example that follows uses a binary classifier indicator.
+
+Take, for instance, a binary classification model with 5 individual weak classifiers. The model's individual weights are as follows:
+
+| Classifier | Weight |
+| ---------- | ------ |
+| 1 | 0.2 |
+| 2 | 0.5 | 
+| 3 | 0.8 | 
+| 4 | 0.2 | 
+| 5 | 0.9 |
+
+When this model makes a prediction, the binary classification of each individual classifier is calculated separately, and the model uses a formula to calculate the weighted sum of the predictions and uses this value to make a classification prediction.
+
+| Classifier | Weight | Prediction (1 or -1 for binary class) | Weighted Prediction |
+| ---------- | ------ | ------ | ------- |
+| 1 | 0.2 | 1.0 | 0.2 |
+| 2 | 0.5 | 1.0 | 0.5 |
+| 3 | 0.8 | -1.0 | -0.8 |
+| 4 | 0.2 | 1.0 | 0.2 |
+| 5 | 0.9 | -1.0 | -0.9 |
+
+The cumulative sum of the weighted predictions of this model is -0.8, so the model will output the class associated with -1.0 as its overall prediction.
+
+## Using boosting in R: AdaBoost
+
+AdaBoost is the first, and most significant, implementation of a boosting algorithm in machine learning. It is part of the `caret` package for R, so we will use this to create a prediction engine for a dataset.
+
+Important considerations for using AdaBoost (Brownlee):
+
+ - Quality Data: Training data should be of high quality to limit misclassifications by weak learners where preventable.
+ - Outliers: Because the AdaBoost methodology will attempt to reclassify items until the model is as accurate as possible or the user-specified maximum number of classifiers has been added, it is wise to examine the dataset for outlier examples.
+ - Noisy Data: AdaBoost does not handle noisy data very well (for similar reasons as above); in particular, if the target variable is noisy, then the algorithm will not perform very well.
+ 
+For ease of use, I will use the `credit` dataset which predicts loan default rates. I have chosen this dataset because it is an interesting one, and I am curious to see how it performs. (Note: this is not an informed decision based on the points above, and a more appropriate dataset may be chosen for this particular problem.)
+
+For demonstration purposes, the package `fastAdaboost` will be used to train a classifier on the `credit` dataset.
+
+```{r}
+# load the caret library
+library(fastAdaboost)
+# load the dataset, and split into training and test sets
+data_raw <- read.csv("credit.csv", stringsAsFactors = TRUE)
+train_indices <- sample(1:nrow(data_raw), 0.8 * nrow(data_raw))
+train_data <- data_raw[train_indices,]
+test_data <- data_raw[-train_indices,]
+```
+
+Now that we have some training and test data separated out, let's examine a simple implementation of AdaBoost.
+
+```{r}
+# train an adaboost model from the fastAdaboost library
+# this example will use 10 classifiers to create the model
+n_classifiers <- 10
+model <- adaboost(default ~ ., data=train_data, n_classifiers)
+prediction <- predict(model, newdata=test_data)
+# let's examine the error rate of this model
+errors <- prediction$error
+errors
+# let's look at the correlation between the test data's target value and the prediction vector
+chisq.test(test_data$default, prediction$class)
+```
+
+The example above created a prediction model with `r n_classifiers` weak learner classifiers, which had an overall error rate of `r errors`. 
+
+Let's try the same implementation again, but with other quantities of weak learner classifiers. We will store the number of classifiers used, and the error rate of the resulting model when predicting a class value on the test data.
+
+```{r}
+
+for (i in c(10, 20, 30, 50, 100))
+  n_classifiers <- i
+  model <- adaboost(default ~ ., data=train_data, n_classifiers)
+  prediction <- predict(model, newdata = test_data)
+  errors <- prediction$error
+  
+```
 
 ## Bibliography
+
+Brownlee, Jason. "Boosting and AdaBoost for Machine Learning." *Machine Learning Mastery.* 2016 April 25. https://machinelearningmastery.com/boosting-and-adaboost-for-machine-learning/. Accessed 2019 Mar 5.
 
 Schapire, Robert E. (1990). "The Strength of Weak Learnability". *Machine Learning.* 5 (2): 197–227. CiteSeerX 10.1.1.20.723. doi:10.1007/bf00116037. Archived from the original (PDF) on 2012-10-10. Retrieved 2012-08-23.
