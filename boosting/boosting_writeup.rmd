@@ -89,8 +89,7 @@ Let's try the same implementation again, but with other quantities of weak learn
 
 ```{r}
 adaboost_performance <- data.frame(ClassifierCount=integer(), ErrorRate=double())
-for (i in c(10, 50)) {
-# for (i in c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100)) {
+for (i in c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100)) {
   n_classifiers <- i
   model <- adaboost(default ~ ., data=train_data, n_classifiers)
   prediction <- predict(model, newdata = test_data)
@@ -115,7 +114,6 @@ Let's replicate the above functionality using the `caret` package, and then try 
 
 ```{r}
 library(caret)
-caret_performance <- data.frame(ClassifierCount=integer(), ErrorRate=double())
 # create and train the model
 
 # these models take forever!
@@ -123,8 +121,9 @@ model <- train(default ~ ., data=train_data, method="adaboost", trControl=trainC
 predictions <- predict(model, test_data)
 # model takes forever..... :(
 model
-predictions
 ```
+
+The accuracy of the model is roughly 74-75%, with an error rate of approximately 25% (as of the last generation of the model). This shows a fairly substantial boost in performance compared with the last runtime accuracy of the `fastAdaboost` result of a 31.5% error rate. However, the results are variable over time and the 10-fold cross-validation results vary between 70% accuracy and 76% accuracy. The results discussed here constitute only one runtime instance of both experiments.
 
 ## Bibliography
 
