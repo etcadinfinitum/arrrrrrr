@@ -53,6 +53,8 @@ Important considerations for using AdaBoost (Brownlee):
  
 For ease of use, I will use the `credit` dataset which predicts loan default rates. I have chosen this dataset because it is an interesting one, and I am curious to see how it performs. (Note: this is not an informed decision based on the points above, and a more appropriate dataset may be chosen for this particular problem.)
 
+### Using the `fastAdaboost` Package in R
+
 For demonstration purposes, the package `fastAdaboost` will be used to train a classifier on the `credit` dataset.
 
 ```{r}
@@ -78,6 +80,7 @@ errors <- prediction$error
 errors
 # let's look at the correlation between the test data's target value and the prediction vector
 chisq.test(test_data$default, prediction$class)
+table(test_data$default, prediction$class)
 ```
 
 The example above created a prediction model with `r n_classifiers` weak learner classifiers, which had an overall error rate of `r errors`. 
@@ -85,13 +88,42 @@ The example above created a prediction model with `r n_classifiers` weak learner
 Let's try the same implementation again, but with other quantities of weak learner classifiers. We will store the number of classifiers used, and the error rate of the resulting model when predicting a class value on the test data.
 
 ```{r}
-
-for (i in c(10, 20, 30, 50, 100))
+adaboost_performance <- data.frame(ClassifierCount=integer(), ErrorRate=double())
+for (i in c(10, 50)) {
+# for (i in c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100)) {
   n_classifiers <- i
   model <- adaboost(default ~ ., data=train_data, n_classifiers)
   prediction <- predict(model, newdata = test_data)
   errors <- prediction$error
+  new_row <- data.frame(ClassifierCount=n_classifiers, ErrorRate=errors)
+  adaboost_performance <- rbind(adaboost_performance, new_row)
+}
+```
   
+Now that we have a dataframe of error information for various numbers of classifiers in our boosting model, this data should be graphed to see whether there is a relationship between the number of classifiers and the error rate. 
+
+```{r}
+adaboost_performance
+plot(adaboost_performance$ClassifierCount, adaboost_performance$ErrorRate, xlab="Number of Weak Classifiers Used", ylab="Error Rate", main="Error Rates of AdaBoost Classifiers")
+```
+
+As demonstrated in this plot, there are not significant performance gains as the number of weak classifiers used grows very large (>50).
+
+### Using the `caret` Package in R
+
+Let's replicate the above functionality using the `caret` package, and then try 10-fold cross validation.
+
+```{r}
+library(caret)
+caret_performance <- data.frame(ClassifierCount=integer(), ErrorRate=double())
+# create and train the model
+
+# these models take forever!
+model <- train(default ~ ., data=train_data, method="adaboost", trControl=trainControl(method="cv", number=10))
+predictions <- predict(model, test_data)
+# model takes forever..... :(
+model
+predictions
 ```
 
 ## Bibliography
