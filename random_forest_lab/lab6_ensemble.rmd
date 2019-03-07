@@ -34,4 +34,4 @@ I don't immediately recall how to get the confusion matrix, accuracy, and error 
 ```{r}
 # Q5
 library(randomForest)
-
+```
