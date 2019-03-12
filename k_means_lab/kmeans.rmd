@@ -1,0 +1,51 @@
+---
+title: 'Lab 7: K-means Implementation'
+author: "Lizzy Presland"
+date: "March 11, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exploring and Preparing the Data
+
+```{r}
+# Q1
+data_raw <- read.csv("snsdata.csv", stringsAsFactors = TRUE)
+# Q2
+summary(data_raw)
+table(data_raw$gender)
+```
+
+#### Regarding Question 2: 
+
+There is definitely missing values for gender - 2,724 missing values to be exact, or approximately 9% of the provided records. This is problematic because if these records were to be excluded, then almost 10% of the data is getting thrown out immediately. Additionally, the vast majority of the data is female, which means that the results will not evenly represent both female and male populations.
+
+#### Question 3:
+
+The `age` feature also has missing values. There are 5,086 examples with no age data, which corresponds to 16.95% of the dataset.
+
+#### Question 4:
+
+There are a few skewed data points in the `age` variable, with the maximum age provided being 106.927 years old. This is unrealistic, and those outlier values should be grouped into the `NA` category.
+
+## Data Preparation - Handling Missing Values (`data$gender`)
+
+#### Question 5:
+
+Examples with missing values should ***NOT*** be excluded; this would cause 17%-25% of the dataset to be thrown out immediately.
+
+#### Question 6:
+
+```{r}
+# add "no_gender" to gender factor levels
+levels <- levels(data_raw$gender)
+levels[length(levels) + 1] <- "no_gender"
+# replace NA values with new factor
+data_raw$gender <- factor(data_raw$gender, levels = levels)
+data_raw$gender[is.na(data_raw$gender)] <- "no_gender"
+# now to confirm this worked:
+table(data_raw$gender)
+```
