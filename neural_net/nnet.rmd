@@ -1,0 +1,142 @@
+---
+title: 'Lab 8: Neural Networks'
+author: "Lizzy Presland"
+date: "March 13, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exploring and Preparing Data
+
+```{r}
+data_raw <- read.csv("concrete.csv", stringsAsFactors = TRUE)
+# Q1
+summary(data_raw)
+```
+
+#### Question 2:
+
+There are eight features that are informative for the target variable, which I believe is `strength`. The ingredients are provided in units of kilograms per cubic meter, which may require some processing.
+
+#### Question 3:
+
+```{r}
+data_raw <- as.data.frame(lapply(data_raw, scale))
+summary(data_raw)
+```
+
+#### Question 4:
+
+```{r}
+# let's set a seed for the sample() function
+set.seed(123)
+partition_vector <- sample(nrow(data_raw), 0.75 * nrow(data_raw))
+data_train <- data_raw[partition_vector,]
+data_test <- data_raw[-partition_vector,]
+```
+
+## Training a Model on the Data
+
+#### Question 5:
+
+```{r}
+library(neuralnet)
+```
+
+#### Question 6:
+
+```{r}
+# let's set another seed for the model
+# set.seed(321)
+concrete_model <- neuralnet(strength ~ cement + slag + ash, data=data_train)
+```
+
+#### Question 7:
+
+```{r}
+plot(concrete_model, rep="best")
+```
+
+## Evaluating Model Performance
+
+#### Question 8:
+
+```{r}
+model_results <- compute(concrete_model, data_test)
+# the line below will display the prediction vector based off of normalized values
+# model_results$net.result
+```
+
+#### Question 9:
+
+We can obtain the `$neurons` object, which stores the neurons for each layer in the network, and `$net.result`, which stores the model's predicted values.
+
+The `$neurons` object might be difficult to understand for us, because it contains a representation of each neuron. However, the `$net.result` vector gives us a vector of predicted strength values for the test dataset, which we can compare directly with the actual vector of values from the  `data_test` dataframe.
+
+#### Question 10:
+
+```{r}
+correlation <- cor(model_results$net.result, data_test$strength)
+```
+
+There is a correlation of `r correlation`, which is reasonable, but we can definitely do better. The typical correlation value I have been getting is 60-70% (before setting a fixed seed value).
+
+## Improving Model Performance
+
+#### Question 11:
+
+```{r}
+concrete_model <- neuralnet(strength ~ cement + slag + ash, data=data_train, hidden = 5)
+```
+
+#### Question 12:
+
+```{r}
+plot(concrete_model, rep="best")
+```
+
+Our new plot for more hidden layers produces a lower error rate (from ~225 to ~191) with fewer steps.
+
+#### Question 13:
+
+```{r}
+model_results <- compute(concrete_model, data_test)
+```
+
+#### Question 14:
+
+```{r}
+correlation_new <- cor(model_results$net.result, data_test$strength)
+```
+
+Our original correlation value was `r correlation` and our new correlation value is `r correlation_new`; this is an improvement of approximately `r round((correlation_new - correlation)*100, digits=1)`%.
+
+## Extra Things
+
+The example method call for `neuralnet()` listed only three factors - this section will examine the results for using all 8 features in the dataset.
+
+```{r}
+concrete_model <- neuralnet(strength ~ cement + slag + ash + water + superplastic + coarseagg + fineagg + age, data=data_train)
+
+plot(concrete_model, rep="best")
+model_results <- compute(concrete_model, data_test)
+correlation_8 <- cor(model_results$net.result, data_test$strength)
+concrete_model <- neuralnet(strength ~ cement + slag + ash + water + superplastic + coarseagg + fineagg + age, data=data_train, hidden = 5)
+plot(concrete_model, rep="best")
+model_results <- compute(concrete_model, data_test)
+correlation_8_new <- cor(model_results$net.result, data_test$strength)
+```
+
+Compared to our original results:
+
+| Model Type | Correlation | Improvement Over First Iteration |
+| ---------- | ----------- | -------------------- |
+| 1 hidden node, 3 features | `r correlation` | N/A |
+| 5 hidden nodes, 3 features | `r correlation_new` | `r round((correlation_new - correlation)*100, digits=1)`% |
+| 1 hidden node, 8 features | `r correlation_8` | `r round((correlation_8 - correlation)*100, digits=1)`% |
+| 5 hidden nodes, 8 features | `r correlation_8_new` | `r round((correlation_8_new - correlation)*100, digits=1)`% |
+
+It's not very surprising that utilizing all features will improve our results substantially; it is very cool to see that using more hidden nodes provides substanital gains (almost 10% of correlation value) when all features are used.
