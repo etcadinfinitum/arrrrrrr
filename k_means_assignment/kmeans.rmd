@@ -50,3 +50,103 @@ data_raw$gender[is.na(data_raw$gender)] <- "no_gender"
 table(data_raw$gender)
 ```
 
+## Data Preparation - Imputing the Missing Values
+
+#### Question 7:
+
+If we try to apply the `mean()` function, it will try to compute the mean using the skewed values from the dataset. This is exactly the result we are trying to avoid.
+
+#### Question 8:
+
+```{r}
+data_ages <- subset(data_raw, !(is.na(age))  | (age < 10) | (age > 21))
+  
+  # data_raw[which(!(is.na(data_raw$age)))]
+test <- aggregate(data_ages, FUN="mean", by=list(data_ages$gradyear))
+test$age
+```
+
+There is 
+
+#### Question 9:
+
+```{r}
+ages <- test$age
+years <- test$gradyear
+for (i in 1:nrow(data_raw)) {
+  if (is.na(data_raw[i,3])) {
+    idx <- which(years == data_raw[i, 1])
+    data_raw[i, 3] = ages[idx]
+  }
+}
+```
+
+Now we check that it worked:
+
+```{r}
+sum(is.na(data_raw[3]))
+summary(data_raw$age)
+```
+
+## Training a Model on the Data
+
+#### Question 10:
+
+We need to remove the first 4 columns from the dataset (gradyear, gender, age, and friends) to get the only interesting clustering features we are concerned with.
+
+```{r}
+sns_features <- data_raw[,5:40]
+ncol(sns_features)
+```
+
+#### Question 11:
+
+Before performing distance calculations, we want to normalize the data; if distance calculations are used for data in its unadjusted form, then certain variables will far outweigh others based on raw values (not on relative rate of occurrence).
+
+#### Question 12:
+
+```{r}
+normalize <- function(x) {
+  for (idx in 1:length(x)) {
+    x[idx] <- (x[idx] - min(x)) / (max(x)- min(x))
+  }
+  return(x)
+}
+sns_normalized <- as.data.frame(lapply(sns_features, normalize))
+```
+
+#### Question 13:
+
+```{r}
+set.seed(321)
+teen_clusters <- kmeans(sns_normalized, 5)
+```
+
+## Evaluating Model Performance
+
+```{r}
+teen_clusters
+```
+
+#### Question 14:
+
+Obtain the size of the kmeans clusters as follows:
+
+```{r}
+teen_clusters$size
+```
+
+The cluster sizes indicate that most individuals were populated in group 1. 
+
+#### Question 15:
+
+I am not sure?
+
+#### Question 16:
+
+Some interesting observations right off the bat: 
+
+* Cluster #3 seems interested in features like `shopping`, `clothes`, `kissed`, `cute`, `hair`, `mall`
+* Cluster #2 seems interested in `baseball`, `football`, and `soccer`, but not in other sports (or the term `sports` itself)
+
+These results would be useful in targeting specific individuals for ads related to their interests, such as trying to sell sports tickets to Cluster #2 or promoting a new clothing store to Cluster #3.
